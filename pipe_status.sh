@@ -22,6 +22,8 @@ echo -e "\n📟 Resuming Pipe Point Status"
         echo '🏆 Check Points:'
         ./pop --points
         echo ''
+        echo '⏰ Check Active Time:'
+        ./pop --stats
         echo '🔄 Updating in 10 seconds...'
         sleep 10
     done

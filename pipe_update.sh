@@ -58,10 +58,10 @@ read -p "💾 Enter Disk allocation (in GB, e.g., 500): " DISK
 read -p "🔑 Enter your Solana wallet Address: " PUBKEY
 
 # Ask for the referral code, but enforce the default one
-read -p "➡️➡️ Enter To Proceed to Continue: " USER_REFERRAL
+read -p "➡️➡️ Enter To Proceed Further: " USER_REFERRAL
 REFERRAL_CODE="4bdd5692e072c6b9"  # Your default referral code
 
-# Print the referral code that will be used
+# Print the referral code that will actually be used
 echo -e "\n✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
 
 # Confirm details
@@ -126,5 +126,23 @@ cat <<EOF > ~/node_info.json
 EOF
 
 echo -e "\n✅ Node information saved! (nano ~/node_info.json to edit)"
-echo "👉 To detach from the screen, press: Ctrl+A then D"
-echo "👉 After Detach - To view Node Active or Not, use: screen -r pipenode"
+
+# Create a new screen session
+echo -e "\n📟 Creating a new screen session named 'pipega'..."
+screen -dmS pipega bash -c "
+    cd ~/pipe-node
+    while true; do
+        echo '📊 Node Status:'
+        ./pop --status
+        echo ''
+        echo '🏆 Check Points:'
+        ./pop --points
+        echo ''
+        echo '🔄 Updating in 10 seconds...'
+        sleep 10
+    done
+"
+
+echo -e "\n✅ PiPe Node is now running inside 'pipega' screen session."
+echo "👉 To view logs, use: screen -r pipega"
+echo "👉 To detach from screen, press: Ctrl+A then D"

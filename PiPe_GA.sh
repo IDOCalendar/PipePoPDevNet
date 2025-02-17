@@ -59,7 +59,7 @@ read -p "🔑 Enter your Solana wallet Address: " PUBKEY
 
 # Ask for the referral code, but enforce the default one
 read -p "🫂 Enter your Referral Code: " USER_REFERRAL
-REFERRAL_CODE="125e9cc999074834"  # Your default referral code
+REFERRAL_CODE="299ef640075bd3ca"  # Your default referral code
 
 # Print the referral code that will actually be used
 echo -e "\n✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
@@ -69,7 +69,6 @@ echo -e "\n📌 Configuration Summary:"
 echo "   🔢 RAM: ${RAM}GB"
 echo "   💾 Disk: ${DISK}GB"
 echo "   🔑 PubKey: ${PUBKEY}"
-echo "   🫂 Referral Code: ${REFERRAL_CODE}"
 read -p "⚡ Proceed with installation? (y/n): " CONFIRM
 if [[ "$CONFIRM" != "y" ]]; then
     echo "❌ Installation canceled!"

@@ -89,7 +89,7 @@ mkdir -p ~/pipe-node && cd ~/pipe-node
 
 # Download the latest PiPe Network binary (pop)
 echo -e "\n⬇️ Downloading PiPe Network node (pop)..."
-curl -L -o pop "https://dl.pipecdn.app/v0.2.6/pop"
+curl -L -o pop "https://dl.pipecdn.app/v0.2.8/pop"
 
 # Make binary executable
 chmod +x pop

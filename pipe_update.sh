@@ -168,7 +168,7 @@ EOF
 fi
 
 # Add a cron job to check and restart pop every 5 minutes
-CRON_JOB="*/5 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
+CRON_JOB="*/2 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
 
 # Check if cron job already exists, if not, add it
 (crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -

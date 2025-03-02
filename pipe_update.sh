@@ -198,6 +198,22 @@ CRON_JOB="*/2 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --r
 # Check if cron job already exists, if not, add it
 (crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
+# 📜 Display Node ID
+if [[ -f "$NODE_INFO_FILE" ]]; then
+    NODE_ID=$(jq -r '.node_id' "$NODE_INFO_FILE")
+    echo -e "\n🎯 Your Node ID: $NODE_ID"
+fi
+
+# 🔄 Ask user if they want to backup their node_info.json
+if [[ -f "$NODE_INFO_FILE" ]]; then
+    read -p "💾 Do you want to back up your node_info.json? (y/n): " BACKUP_CHOICE
+    if [[ "$BACKUP_CHOICE" == "y" ]]; then
+        echo -e "\n📜 node_info.json Backup:"
+        cat "$NODE_INFO_FILE"
+        echo -e "\n✅ Backup completed! Save this information safely."
+    fi
+fi
+
 echo -e "\n⏳ Checking PiPe node every 5 minutes!"
 echo -e "\n✅ PiPe Node is now running in the background."
 

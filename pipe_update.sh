@@ -103,7 +103,6 @@ echo -e "\n📌 Configuration Summary:"
 echo "   🔢 RAM: ${RAM}GB (Auto-detected)"
 echo "   💾 Disk: ${DISK}GB (default)"
 echo "   🔑 PubKey: ${PUBKEY}"
-echo "   ✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
 echo -e "\n⚡ Proceeding with installation..."
 
 # Update system

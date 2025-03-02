@@ -37,13 +37,6 @@ printf "   • Telegram: https://t.me/GaCryptOfficial\n"
 printf "   • X (formerly Twitter): https://x.com/GACryptoO\n"
 printf "${RESET}"
 
-# Check if the "pipega" screen session exists
-if screen -list | grep -q "pipega"; then
-    echo -e "\n✅ Existing 'pipega' screen session found! Resuming it..."
-    screen -r pipega
-    exit 0
-fi
-
 echo "==========================================================="
 echo "🚀  Welcome to the PiPe Network Node Installer 🚀"
 echo "==========================================================="
@@ -52,23 +45,30 @@ echo "🌟 Your journey to decentralized networks begins here!"
 echo "✨ Follow the steps as the script runs automatically for you!"
 echo ""
 
-# Ask the user for input
-read -p "🔢 Enter RAM allocation (in GB, e.g., 8): " RAM
-read -p "💾 Enter Disk allocation (in GB, e.g., 500): " DISK
-read -p "🔑 Enter your Solana wallet Address: " PUBKEY
+#!/bin/bash
 
-# Ask for the referral code, but enforce the default one
-read -p "➡️➡️ Enter To Proceed Further: " USER_REFERRAL
-REFERRAL_CODE="4bdd5692e072c6b9"  # Your default referral code
+# Set default RAM and Disk allocation
+RAM=6
+DISK=100
+PUBKEY_FILE="~/.pubkey"
+REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
 
-# Print the referral code that will actually be used
-echo -e "\n✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
+# Check if the public key file exists
+if [[ -f "$PUBKEY_FILE" ]]; then
+    PUBKEY=$(cat "$PUBKEY_FILE")
+    echo -e "🔑 Using saved Solana wallet address: $PUBKEY"
+else
+    read -p "🔑 Enter your Solana wallet Address: " PUBKEY
+    echo "$PUBKEY" | sudo tee "$PUBKEY_FILE" > /dev/null
+    echo -e "✅ Public key saved for future use!"
+fi
 
 # Confirm details
 echo -e "\n📌 Configuration Summary:"
-echo "   🔢 RAM: ${RAM}GB"
-echo "   💾 Disk: ${DISK}GB"
+echo "   🔢 RAM: ${RAM}GB (default)"
+echo "   💾 Disk: ${DISK}GB (default)"
 echo "   🔑 PubKey: ${PUBKEY}"
+echo "   ✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
 read -p "⚡ Proceed with installation? (y/n): " CONFIRM
 if [[ "$CONFIRM" != "y" ]]; then
     echo "❌ Installation canceled!"
@@ -81,7 +81,11 @@ sudo apt update -y && sudo apt upgrade -y
 
 # Install dependencies
 echo -e "\n⚙️ Installing required dependencies..."
-sudo apt install -y curl wget jq unzip screen
+sudo apt install -y curl wget jq unzip screen cron
+
+# Enable and start cron service (if not already running)
+sudo systemctl enable cron
+sudo systemctl start cron
 
 # Create a directory for PiPe node
 echo -e "\n📂 Setting up PiPe node directory..."
@@ -110,9 +114,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Start PiPe node
-echo -e "\n🚀 Starting PiPe Network node..."
-sudo ./pop --ram "$RAM" --max-disk "$DISK" --cache-dir /data --pubKey "$PUBKEY" &
+# Check if pop is already running
+if pgrep pop > /dev/null; then
+    echo -e "\n✅ PiPe node is already running!"
+else
+    echo -e "\n🚀 Starting PiPe Network node..."
+    sudo ./pop --ram "$RAM" --max-disk "$DISK" --cache-dir /data --pubKey "$PUBKEY" &
+fi
 
 # Save node information
 echo -e "\n📜 Saving node information..."
@@ -127,22 +135,11 @@ EOF
 
 echo -e "\n✅ Node information saved! (nano ~/node_info.json to edit)"
 
-# Create a new screen session
-echo -e "\n📟 Creating a new screen session named 'pipega'..."
-screen -dmS pipega bash -c "
-    cd ~/pipe-node
-    while true; do
-        echo '📊 Node Status:'
-        ./pop --status
-        echo ''
-        echo '🏆 Check Points:'
-        ./pop --points
-        echo ''
-        echo '🔄 Updating in 10 seconds...'
-        sleep 10
-    done
-"
+# Add a cron job to check and restart pop every 5 minutes
+CRON_JOB="*/5 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram 6 --max-disk 100 --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
 
-echo -e "\n✅ PiPe Node is now running inside 'pipega' screen session."
-echo "👉 To view logs, use: screen -r pipega"
-echo "👉 To detach from screen, press: Ctrl+A then D"
+# Check if cron job already exists, if not, add it
+(crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+
+echo -e "\n⏳ Checking PiPe node every 5 minutes!"
+echo -e "\n✅ PiPe Node is now running in the background."

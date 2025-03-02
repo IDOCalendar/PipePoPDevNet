@@ -47,23 +47,55 @@ echo ""
 
 #!/bin/bash
 
-# Detect system's total RAM (in GB)
-TOTAL_RAM=$(free -g | awk '/^Mem:/ {print $2}')
-RAM=$TOTAL_RAM  # Assign detected RAM
-
-# Set default Disk allocation
-DISK=100
+# Paths
+NODE_INFO_FILE=~/pipe-node/node_info.json
 PUBKEY_FILE="/root/.pubkey"
 REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
 
-# Check if the public key file exists
+# Detect system's total RAM (in GB)
+TOTAL_RAM=$(free -g | awk '/^Mem:/ {print $2}')
+RAM=$TOTAL_RAM  # Assign detected RAM
+DISK=100        # Default Disk allocation
+
+# Function to restore node_info.json from backup
+restore_node_info() {
+    read -p "🔄 Do you have a backup of node_info.json? (y/n): " RESTORE_CHOICE
+    if [[ "$RESTORE_CHOICE" == "y" ]]; then
+        read -p "📌 Enter your previous Node ID: " NODE_ID
+        read -p "🔑 Enter your authentication token: " TOKEN
+
+        # Save the restored info
+        cat <<EOF > "$NODE_INFO_FILE"
+{
+    "node_id": "$NODE_ID",
+    "registered": true,
+    "token": "$TOKEN"
+}
+EOF
+        echo "✅ Node info restored!"
+    fi
+}
+
+# Check if node_info.json already exists
+if [[ -f "$NODE_INFO_FILE" ]]; then
+    read -p "⚙️ An existing node_info.json was found. Do you want to use it? (y/n): " USE_EXISTING
+    if [[ "$USE_EXISTING" == "y" ]]; then
+        echo "✅ Using existing node_info.json..."
+    else
+        restore_node_info  # Ask to restore from backup
+    fi
+else
+    restore_node_info  # Ask to restore if there's no existing file
+fi
+
+# Restore Public Key if it exists, otherwise ask user
 if [[ -f "$PUBKEY_FILE" ]]; then
     PUBKEY=$(cat "$PUBKEY_FILE")
     echo -e "🔑 Using saved Solana wallet address: $PUBKEY"
 else
     read -p "🔑 Enter your Solana wallet Address: " PUBKEY
     echo "$PUBKEY" | sudo tee "$PUBKEY_FILE" > /dev/null
-    echo -e "✅ Public key saved for future use!"
+    echo "✅ Public key saved for future use!"
 fi
 
 # Configuration Summary
@@ -105,12 +137,14 @@ echo -e "\n🔍 Verifying pop binary..."
 echo -e "\n📂 Creating download cache directory..."
 mkdir -p download_cache
 
-# Sign up using the referral code
-echo -e "\n📌 Signing up for PiPe Network using referral..."
-./pop --signup-by-referral-route "$REFERRAL_CODE"
-if [ $? -ne 0 ]; then
-    echo "❌ Error: Signup failed!"
-    exit 1
+# Sign up using the referral code (only if no existing node_info.json)
+if [[ ! -f "$NODE_INFO_FILE" ]]; then
+    echo -e "\n📌 Signing up for PiPe Network using referral..."
+    ./pop --signup-by-referral-route "$REFERRAL_CODE"
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Signup failed!"
+        exit 1
+    fi
 fi
 
 # Check if pop is already running
@@ -121,18 +155,18 @@ else
     sudo ./pop --ram "$RAM" --max-disk "$DISK" --cache-dir /data --pubKey "$PUBKEY" &
 fi
 
-# Save node information
-echo -e "\n📜 Saving node information..."
-cat <<EOF > ~/node_info.json
+# Save node information (if restored, it will keep previous values)
+if [[ ! -f "$NODE_INFO_FILE" ]]; then
+    echo -e "\n📜 Saving node information..."
+    cat <<EOF > "$NODE_INFO_FILE"
 {
-    "RAM": "$RAM",
-    "Disk": "$DISK",
-    "PubKey": "$PUBKEY",
-    "Referral": "$REFERRAL_CODE"
+    "node_id": "$(uuidgen)",
+    "registered": true,
+    "token": "your-generated-token"
 }
 EOF
-
-echo -e "\n✅ Node information saved! (nano ~/node_info.json to edit)"
+    echo "✅ Node information saved! (nano ~/pipe-node/node_info.json to edit)"
+fi
 
 # Add a cron job to check and restart pop every 5 minutes
 CRON_JOB="*/5 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"

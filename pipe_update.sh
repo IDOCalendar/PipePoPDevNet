@@ -173,6 +173,6 @@ CRON_JOB="*/2 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --r
 # Check if cron job already exists, if not, add it
 (crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
-echo -e "\n⏳ Cron job added to check PiPe node every 5 minutes!"
+echo -e "\n⏳ Checking PiPe node every 5 minutes!"
 echo -e "\n✅ PiPe Node is now running in the background."
 

@@ -47,10 +47,13 @@ echo ""
 
 #!/bin/bash
 
-# Set default RAM and Disk allocation
-RAM=6
+# Detect system's total RAM (in GB)
+TOTAL_RAM=$(free -g | awk '/^Mem:/ {print $2}')
+RAM=$TOTAL_RAM  # Assign detected RAM
+
+# Set default Disk allocation
 DISK=100
-PUBKEY_FILE="~/.pubkey"
+PUBKEY_FILE="/root/.pubkey"
 REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
 
 # Check if the public key file exists
@@ -63,17 +66,13 @@ else
     echo -e "✅ Public key saved for future use!"
 fi
 
-# Confirm details
+# Configuration Summary
 echo -e "\n📌 Configuration Summary:"
-echo "   🔢 RAM: ${RAM}GB (default)"
+echo "   🔢 RAM: ${RAM}GB (Auto-detected)"
 echo "   💾 Disk: ${DISK}GB (default)"
 echo "   🔑 PubKey: ${PUBKEY}"
 echo "   ✅ Using Referral Code: $REFERRAL_CODE (default enforced)"
-read -p "⚡ Proceed with installation? (y/n): " CONFIRM
-if [[ "$CONFIRM" != "y" ]]; then
-    echo "❌ Installation canceled!"
-    exit 1
-fi
+echo -e "\n⚡ Proceeding with installation..."
 
 # Update system
 echo -e "\n🔄 Updating system packages..."
@@ -136,10 +135,11 @@ EOF
 echo -e "\n✅ Node information saved! (nano ~/node_info.json to edit)"
 
 # Add a cron job to check and restart pop every 5 minutes
-CRON_JOB="*/5 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram 6 --max-disk 100 --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
+CRON_JOB="*/5 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
 
 # Check if cron job already exists, if not, add it
 (crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
-echo -e "\n⏳ Checking PiPe node every 5 minutes!"
+echo -e "\n⏳ Cron job added to check PiPe node every 5 minutes!"
 echo -e "\n✅ PiPe Node is now running in the background."
+

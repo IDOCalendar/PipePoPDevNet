@@ -47,6 +47,31 @@ echo ""
 
 #!/bin/bash
 
+# 🛠 Check if cron is installed; if not, install it
+if ! command -v cron &> /dev/null; then
+    echo "⚙️ Cron is not installed! Installing now..."
+    sudo apt update -y && sudo apt install -y cron
+    echo "✅ Cron installed successfully!"
+else
+    echo "✅ Cron is already installed."
+fi
+
+# 🛠 Check & Start Cron Manually If Not Running
+if ! pgrep cron > /dev/null; then
+    echo "🔄 Cron is not running! Starting cron..."
+    sudo service cron start || sudo cron &
+    echo "✅ Cron started successfully!"
+else
+    echo "✅ Cron is already running."
+fi
+
+# 🛠 Update & Upgrade System
+echo "🔄 Updating system packages..."
+sudo apt-get update && sudo apt-get upgrade -y
+sudo apt list --upgradable
+sudo apt-get update && sudo apt-get upgrade -y
+echo "✅ System update and upgrade completed!"
+
 # Paths
 NODE_INFO_FILE=~/pipe-node/node_info.json
 PUBKEY_FILE="/root/.pubkey"

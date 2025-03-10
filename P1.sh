@@ -1,34 +1,10 @@
 #!/bin/bash
 
-# 🛠 Check if cron is installed; if not, install it
-if ! command -v cron &> /dev/null; then
-    echo "⚙️ Cron is not installed! Installing now..."
-    sudo apt update -y && sudo apt install -y cron
-    echo "✅ Cron installed successfully!"
-else
-    echo "✅ Cron is already installed."
-fi
-
-# 🛠 Check & Start Cron Manually If Not Running
-if ! pgrep cron > /dev/null; then
-    echo "🔄 Cron is not running! Starting cron..."
-    sudo service cron start || sudo cron &
-    echo "✅ Cron started successfully!"
-else
-    echo "✅ Cron is already running."
-fi
-
-# 🛠 Update & Upgrade System
-echo "🔄 Updating system packages..."
-sudo apt-get update && sudo apt-get upgrade -y
-sudo apt list --upgradable
-sudo apt-get update && sudo apt-get upgrade -y
-echo "✅ System update and upgrade completed!"
-
 # Paths
 NODE_INFO_FILE=~/pipe-node/node_info.json
 PUBKEY_FILE="/root/.pubkey"
 REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
+NODE_DIR=~/pipe-node
 
 # Detect system's total RAM (in GB)
 TOTAL_RAM=$(free -g | awk '/^Mem:/ {print $2}')
@@ -74,117 +50,130 @@ EOF
     fi
 }
 
-# Create node_info.json if it doesn't exist
-create_node_info_file
+# Function to install the node
+install_node() {
+    echo -e "\n🔄 Updating system packages..."
+    sudo apt update -y && sudo apt upgrade -y
 
-# Check if node_info.json is empty or not configured
-if [[ $(jq -e '.node_id == "" or .token == ""' "$NODE_INFO_FILE") == "true" ]]; then
-    echo "⚙️ node_info.json is empty or not fully configured."
-    restore_node_info  # Ask to restore from backup
-else
-    echo "✅ node_info.json is already configured."
-fi
+    echo -e "\n⚙️ Installing required dependencies..."
+    sudo apt install -y curl wget jq unzip screen cron
 
-# Restore Public Key if it exists, otherwise ask user
-if [[ -f "$PUBKEY_FILE" ]]; then
-    PUBKEY=$(cat "$PUBKEY_FILE")
-    echo -e "🔑 Using saved Solana wallet address: $PUBKEY"
-else
-    read -p "🔑 Enter your Solana wallet Address: " PUBKEY
-    echo "$PUBKEY" | sudo tee "$PUBKEY_FILE" > /dev/null
-    echo "✅ Public key saved for future use!"
-fi
+    echo -e "\n📂 Setting up PiPe node directory..."
+    mkdir -p "$NODE_DIR" && cd "$NODE_DIR"
 
-# Configuration Summary
-echo -e "\n📌 Configuration Summary:"
-echo "   🔢 RAM: ${RAM}GB (Auto-detected)"
-echo "   💾 Disk: ${DISK}GB (default)"
-echo "   🔑 PubKey: ${PUBKEY}"
-echo -e "\n⚡ Proceeding with installation..."
+    echo -e "\n⬇️ Downloading PiPe Network node (pop)..."
+    curl -L -o pop "https://dl.pipecdn.app/v0.2.8/pop"
 
-# Update system
-echo -e "\n🔄 Updating system packages..."
-sudo apt update -y && sudo apt upgrade -y
+    echo -e "\n🔧 Making binary executable..."
+    chmod +x pop
 
-# Install dependencies
-echo -e "\n⚙️ Installing required dependencies..."
-sudo apt install -y curl wget jq unzip screen cron
+    echo -e "\n🔍 Verifying pop binary..."
+    ./pop --version || { echo "❌ Error: pop binary is not working!"; exit 1; }
 
-# Enable and start cron service (if not already running)
-sudo systemctl enable cron
-sudo systemctl start cron
+    echo -e "\n📂 Creating download cache directory..."
+    mkdir -p download_cache
 
-# Create a directory for PiPe node
-echo -e "\n📂 Setting up PiPe node directory..."
-mkdir -p ~/pipe-node && cd ~/pipe-node
-
-# Download the latest PiPe Network binary (pop)
-echo -e "\n⬇️ Downloading PiPe Network node (pop)..."
-curl -L -o pop "https://dl.pipecdn.app/v0.2.8/pop"
-
-# Make binary executable
-chmod +x pop
-
-# Verify installation
-echo -e "\n🔍 Verifying pop binary..."
-./pop --version || { echo "❌ Error: pop binary is not working!"; exit 1; }
-
-# Create download cache directory
-echo -e "\n📂 Creating download cache directory..."
-mkdir -p download_cache
-
-# Sign up using the referral code (only if no existing node_info.json)
-if [[ ! -f "$NODE_INFO_FILE" ]]; then
-    echo -e "\n📌 Signing up for PiPe Network using referral..."
-    ./pop --signup-by-referral-route "$REFERRAL_CODE"
-    if [ $? -ne 0 ]; then
-        echo "❌ Error: Signup failed!"
-        exit 1
+    # Restore Public Key if it exists, otherwise ask user
+    if [[ -f "$PUBKEY_FILE" ]]; then
+        PUBKEY=$(cat "$PUBKEY_FILE")
+        echo -e "🔑 Using saved Solana wallet address: $PUBKEY"
+    else
+        read -p "🔑 Enter your Solana wallet Address: " PUBKEY
+        echo "$PUBKEY" | sudo tee "$PUBKEY_FILE" > /dev/null
+        echo "✅ Public key saved for future use!"
     fi
-fi
 
-# Check if pop is already running
-if pgrep pop > /dev/null; then
-    echo -e "\n✅ PiPe node is already running!"
-else
+    # Sign up using the referral code (only if no existing node_info.json)
+    if [[ ! -f "$NODE_INFO_FILE" ]]; then
+        echo -e "\n📌 Signing up for PiPe Network using referral..."
+        ./pop --signup-by-referral-route "$REFERRAL_CODE"
+        if [ $? -ne 0 ]; then
+            echo "❌ Error: Signup failed!"
+            exit 1
+        fi
+    fi
+
     echo -e "\n🚀 Starting PiPe Network node..."
     sudo ./pop --ram "$RAM" --max-disk "$DISK" --cache-dir /data --pubKey "$PUBKEY" &
-fi
 
-# Save node information (if restored, it will keep previous values)
-if [[ ! -f "$NODE_INFO_FILE" ]]; then
-    echo -e "\n📜 Saving node information..."
-    cat <<EOF > "$NODE_INFO_FILE"
-{
-    "node_id": "$(uuidgen)",
-    "registered": true,
-    "token": "your-generated-token"
+    # Add a cron job to check and restart pop every 5 minutes
+    CRON_JOB="*/2 * * * * pgrep pop > /dev/null || (cd $NODE_DIR && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
+    (crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+
+    echo -e "\n✅ PiPe Node installation and setup completed!"
 }
-EOF
-    echo "✅ Node information saved! (nano ~/pipe-node/node_info.json to edit)"
-fi
 
-# Add a cron job to check and restart pop every 5 minutes
-CRON_JOB="*/2 * * * * pgrep pop > /dev/null || (cd ~/pipe-node && sudo ./pop --ram $RAM --max-disk $DISK --cache-dir /data --pubKey \"\$(cat /root/.pubkey)\" &)"
-
-# Check if cron job already exists, if not, add it
-(crontab -l 2>/dev/null | grep -F "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-
-# 📜 Display Node ID
-if [[ -f "$NODE_INFO_FILE" ]]; then
-    NODE_ID=$(jq -r '.node_id' "$NODE_INFO_FILE")
-    echo -e "\n🎯 Your Node ID: $NODE_ID"
-fi
-
-# 🔄 Ask user if they want to backup their node_info.json
-if [[ -f "$NODE_INFO_FILE" ]]; then
-    read -p "💾 Do you want to back up your node_info.json? (y/n): " BACKUP_CHOICE
-    if [[ "$BACKUP_CHOICE" == "y" ]]; then
-        echo -e "\n📜 node_info.json Backup:"
-        cat "$NODE_INFO_FILE"
-        echo -e "\n✅ Backup completed! Save this information safely."
+# Function to stop the node
+stop_node() {
+    if pgrep pop > /dev/null; then
+        echo -e "\n🛑 Stopping PiPe Network node..."
+        sudo pkill pop
+        echo "✅ PiPe Node stopped!"
+    else
+        echo -e "\n✅ PiPe Node is not running."
     fi
-fi
+}
 
-echo -e "\n⏳ Checking PiPe node every 5 minutes!"
-echo -e "\n✅ PiPe Node is now running in the background."
+# Function to restart the node
+restart_node() {
+    stop_node
+    echo -e "\n🔄 Restarting PiPe Network node..."
+    cd "$NODE_DIR"
+    sudo ./pop --ram "$RAM" --max-disk "$DISK" --cache-dir /data --pubKey "$PUBKEY" &
+    echo "✅ PiPe Node restarted!"
+}
+
+# Function to check node status
+check_node_status() {
+    if pgrep pop > /dev/null; then
+        echo -e "\n✅ PiPe Node is running."
+    else
+        echo -e "\n❌ PiPe Node is not running."
+    fi
+}
+
+# Function to uninstall the node
+uninstall_node() {
+    echo -e "\n⚠️ Uninstalling PiPe Node..."
+    stop_node
+    rm -rf "$NODE_DIR"
+    crontab -l | grep -v "pgrep pop" | crontab -
+    echo "✅ PiPe Node uninstalled!"
+}
+
+# Main menu
+while true; do
+    echo -e "\n📋 PiPe Node Management Menu:"
+    echo "1. Install PiPe Node"
+    echo "2. Stop PiPe Node"
+    echo "3. Restart PiPe Node"
+    echo "4. Check Node Status"
+    echo "5. Uninstall PiPe Node"
+    echo "6. Exit"
+    read -p "🔢 Choose an option (1-6): " CHOICE
+
+    case $CHOICE in
+        1)
+            install_node
+            ;;
+        2)
+            stop_node
+            ;;
+        3)
+            restart_node
+            ;;
+        4)
+            check_node_status
+            ;;
+        5)
+            uninstall_node
+            ;;
+        6)
+            echo -e "\n👋 Exiting..."
+            exit 0
+            ;;
+        *)
+            echo -e "\n❌ Invalid choice. Please try again."
+            ;;
+    esac
+done

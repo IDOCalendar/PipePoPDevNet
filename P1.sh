@@ -168,8 +168,8 @@ while true; do
     echo -e "\n📋 PiPe Node Management Menu:"
     echo "1. Install PiPe Node"
     echo "2. Check Node Status"
-    echo "3. Restart PiPe Node"
-    echo "4. 
+    echo "3. Backup your Node Info"
+    echo "4. Restore Your Node Info"
     echo "5. Uninstall PiPe Node"
     echo "6. Exit"
     read -p "🔢 Choose an option (1-6): " CHOICE

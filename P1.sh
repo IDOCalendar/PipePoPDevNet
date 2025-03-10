@@ -52,6 +52,16 @@ EOF
     fi
 }
 
+# Function to display node_info.json for backup
+backup_node_info() {
+    if [[ -f "$NODE_INFO_FILE" ]]; then
+        echo -e "\n📜 Contents of node_info.json (Copy and save this information):"
+        cat "$NODE_INFO_FILE"
+    else
+        echo -e "\n❌ node_info.json not found! Please install the node first."
+    fi
+}
+
 # Function to install the node
 install_node() {
     echo -e "\n🔄 Updating system packages..."
@@ -146,11 +156,20 @@ uninstall_node() {
 
 # Main menu
 while true; do
+
+    echo "==============================================================="
+    echo -e "\e[1;36m🚀🚀 PIPE NODE INSTALLER Tool-Kit BY GA-CRYPTO 🚀🚀\e[0m"
+    echo "==============================================================="
+    echo -e "\e[1;85m📢 Stay updated:\e[0m"
+    echo -e "\e[1;85m🔹 Telegram: https://t.me/GaCryptOfficial\e[0m"
+    echo -e "\e[1;85m🔹 X (Twitter): https://x.com/GACryptoO\e[0m"
+    echo "==============================================================="
+
     echo -e "\n📋 PiPe Node Management Menu:"
     echo "1. Install PiPe Node"
-    echo "2. Stop PiPe Node"
+    echo "2. Check Node Status"
     echo "3. Restart PiPe Node"
-    echo "4. Check Node Status"
+    echo "4. 
     echo "5. Uninstall PiPe Node"
     echo "6. Exit"
     read -p "🔢 Choose an option (1-6): " CHOICE
@@ -160,16 +179,16 @@ while true; do
             install_node
             ;;
         2)
-            stop_node
-            ;;
-        3)
-            restart_node
-            ;;
-        4)
             check_node_status
             ;;
+        3)
+            backup_node_info
+            ;;
+        4)
+            restore_node_info
+            ;;
         5)
-            uninstall_node
+            check_node_status
             ;;
         6)
             echo -e "\n👋 Exiting..."

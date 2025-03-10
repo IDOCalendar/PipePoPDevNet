@@ -50,7 +50,7 @@ echo ""
 # Paths
 NODE_INFO_FILE=~/pipe-node/node_info.json
 PUBKEY_FILE="/root/.pubkey"
-REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
+REFERRAL_CODE="d95ee70dc79214c4"  # Default referral code
 NODE_DIR=~/pipe-node
 PIPE_STATUS_SCRIPT_URL="https://raw.githubusercontent.com/abhiag/PipePoPDevNet/main/pipe_status.sh"
 PIPE_STATUS_SCRIPT="$NODE_DIR/pipe_status.sh"

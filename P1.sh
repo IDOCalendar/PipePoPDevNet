@@ -5,6 +5,8 @@ NODE_INFO_FILE=~/pipe-node/node_info.json
 PUBKEY_FILE="/root/.pubkey"
 REFERRAL_CODE="4bdd5692e072c6b9"  # Default referral code
 NODE_DIR=~/pipe-node
+PIPE_STATUS_SCRIPT_URL="https://raw.githubusercontent.com/abhiag/PipePoPDevNet/main/pipe_status.sh"
+PIPE_STATUS_SCRIPT="$NODE_DIR/pipe_status.sh"
 
 # Detect system's total RAM (in GB)
 TOTAL_RAM=$(free -g | awk '/^Mem:/ {print $2}')
@@ -123,13 +125,14 @@ restart_node() {
     echo "✅ PiPe Node restarted!"
 }
 
-# Function to check node status
+# Function to check node status using pipe_status.sh
 check_node_status() {
-    if pgrep pop > /dev/null; then
-        echo -e "\n✅ PiPe Node is running."
-    else
-        echo -e "\n❌ PiPe Node is not running."
-    fi
+    echo -e "\n⬇️ Downloading pipe_status.sh script..."
+    curl -L -o "$PIPE_STATUS_SCRIPT" "$PIPE_STATUS_SCRIPT_URL" || { echo "❌ Failed to download pipe_status.sh"; return 1; }
+    chmod +x "$PIPE_STATUS_SCRIPT"
+
+    echo -e "\n🔍 Checking PiPe Node status..."
+    "$PIPE_STATUS_SCRIPT"
 }
 
 # Function to uninstall the node
